@@ -35,37 +35,34 @@ CURRENT_LOC=$(defaults read com.apple.screencapture location 2>/dev/null || echo
 RECOMMENDED="${HOME}/Pictures/Screenshots"
 
 echo ""
-echo "CURRENT screenshot save location: $CURRENT_LOC"
-echo ""
-echo "macOS restricts LaunchAgents from reading ~/Desktop, ~/Documents, ~/Downloads"
-echo "(silent TCC block — daemon will fire but find 0 files)."
-echo ""
-echo "Recommended: move screenshots to $RECOMMENDED"
-echo "Your Cmd+Shift+5 / Cmd+Shift+4 shortcuts keep working — only the save path changes."
-echo ""
-REPLY=""
-if [[ -t 0 ]]; then
-  read -p "Move screenshot save location to $RECOMMENDED? [Y/n] " -n 1 -r
-  echo ""
-elif [[ -r /dev/tty ]]; then
-  read -p "Move screenshot save location to $RECOMMENDED? [Y/n] " -n 1 -r < /dev/tty
-  echo ""
-else
-  echo "  (non-interactive install — defaulting to YES, move to $RECOMMENDED)"
-  REPLY="y"
-fi
+echo "Current screenshot save location: $CURRENT_LOC"
+
+# Detect TCC-protected paths. LaunchAgents can't read ~/Desktop, ~/Documents, ~/Downloads.
+TCC_BLOCKED=0
+case "$CURRENT_LOC" in
+  "${HOME}/Desktop"|"${HOME}/Desktop/"*|\
+  "${HOME}/Documents"|"${HOME}/Documents/"*|\
+  "${HOME}/Downloads"|"${HOME}/Downloads/"*)
+    TCC_BLOCKED=1
+    ;;
+esac
 
 WATCH_DIR="$CURRENT_LOC"
-if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+if [[ $TCC_BLOCKED -eq 1 ]]; then
+  echo ""
+  echo "  This path is TCC-protected. macOS will silently block the daemon from"
+  echo "  reading it (daemon fires, finds 0 files, nothing happens)."
+  echo "  Moving to $RECOMMENDED so things actually work."
+  echo ""
   mkdir -p "$RECOMMENDED"
   defaults write com.apple.screencapture location "$RECOMMENDED"
   killall SystemUIServer 2>/dev/null || true
   WATCH_DIR="$RECOMMENDED"
-  echo "  -> screenshots will now save to $RECOMMENDED"
+  echo "  -> screenshots now save to $RECOMMENDED"
+  echo "  -> revert anytime: defaults delete com.apple.screencapture location && killall SystemUIServer"
 else
-  echo "  -> keeping $CURRENT_LOC"
-  echo "  WARNING: if this is ~/Desktop, ~/Documents, or ~/Downloads, the daemon"
-  echo "  may silently fail due to macOS TCC. Consider moving later."
+  echo "  -> not TCC-protected, keeping as-is"
+  mkdir -p "$WATCH_DIR"
 fi
 
 # --- Write LaunchAgent plist ---
