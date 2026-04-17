@@ -6,9 +6,21 @@
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
 set -uo pipefail
 
+# ==============================================================================
+# CONFIG — edit these if you want
+# ==============================================================================
+# MAX_DIM: longest side in pixels. 1568 is the optimal value for Claude (stays
+# inside 1 image tile — lowest token cost). Go lower to save more tokens at the
+# cost of readability in dense screenshots.
+#   1568  ← default, best quality + still 1-tile
+#   1280  ← ~33% more tokens saved, still very readable
+#   1024  ← ~55% more tokens saved, fine for most UIs
+#   768   ← extreme, text in dense UIs may degrade
+# ==============================================================================
+MAX_DIM="${SCREENSHOT_OPTIMIZER_MAX_DIM:-1568}"
+
 WATCH_DIR="${SCREENSHOT_OPTIMIZER_DIR:-${HOME}/Pictures/Screenshots}"
 LOG="${HOME}/.screenshot-optimizer/optimizer.log"
-MAX_DIM="${SCREENSHOT_OPTIMIZER_MAX_DIM:-1800}"
 MARKER_XATTR="com.screenshot-optimizer.resized"
 
 mkdir -p "$(dirname "$LOG")"

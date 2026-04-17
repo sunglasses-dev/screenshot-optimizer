@@ -5,7 +5,7 @@
 Fixes two things Opus 4.7 made worse today:
 
 1. **The 2000px crash.** Paste a Retina screenshot (usually ~3400×2000) and Claude Code errors out. Every message after that is broken until you `/compact` and lose your context. Happened to me twice today.
-2. **The token tax.** 4.7 roughly doubled token usage on vision inputs. A full-window Retina screenshot costs ~1600 image tokens. Capped at 1800px, the same screenshot is ~950 tokens. **~40–60% savings with no visible quality loss.**
+2. **The token tax.** 4.7 roughly doubled token usage on vision inputs. A full-window Retina screenshot costs ~9,500 image tokens. Capped at 1568px, the same screenshot is ~1,950 tokens. **~79% savings with no visible quality loss** — and you can push it further if you want (see [Config](#config--pick-your-own-qualitysavings-tradeoff) below).
 
 > macOS only. Uses `sips`, `launchctl`, `defaults` — all built-in. No dependencies.
 
@@ -53,14 +53,44 @@ Removes the LaunchAgent and script. Does not touch your screenshots or revert th
 tail -f ~/.screenshot-optimizer/optimizer.log
 ```
 
-## Config
+## Config — pick your own quality/savings tradeoff
 
-Set before install, or edit the LaunchAgent plist after:
+The only thing worth tuning is `MAX_DIM` (longest side in pixels). Default is **1568** because that's the magic number where Claude stops multi-tiling your image. Go lower to save more tokens if you don't mind slight readability loss in dense UIs.
+
+Claude's tokens formula: `tokens ≈ (width × height) / 750`
+
+From a standard Retina screenshot (3456×2058, ~9,500 tokens uncompressed):
+
+| `MAX_DIM` | Tokens after | Savings | Best for |
+| --- | --- | --- | --- |
+| `1568` (default) | ~1,950 | **79%** | everything |
+| `1280` | ~1,300 | **86%** | most screenshots |
+| `1024` | ~800 | **92%** | simple UIs, chats, charts |
+| `768` | ~450 | **95%** | extreme — text in IDEs may degrade |
+
+### Two ways to change it
+
+**1. Edit the script** (easiest — installed at `~/.screenshot-optimizer/screenshot-optimizer.sh`):
 
 ```bash
-SCREENSHOT_OPTIMIZER_MAX_DIM=1600     # default 1800
-SCREENSHOT_OPTIMIZER_DIR=/custom/path # default ~/Pictures/Screenshots
+# change MAX_DIM="${SCREENSHOT_OPTIMIZER_MAX_DIM:-1568}"
+# to     MAX_DIM="${SCREENSHOT_OPTIMIZER_MAX_DIM:-1024}"
 ```
+
+Then reload the daemon: `launchctl unload ~/Library/LaunchAgents/com.screenshot-optimizer.plist && launchctl load ~/Library/LaunchAgents/com.screenshot-optimizer.plist`
+
+**2. Set the env var in the plist** (at `~/Library/LaunchAgents/com.screenshot-optimizer.plist`):
+
+```xml
+<key>EnvironmentVariables</key>
+<dict>
+    <key>SCREENSHOT_OPTIMIZER_MAX_DIM</key>
+    <string>1024</string>
+    ...
+</dict>
+```
+
+Already-resized screenshots keep their old dimensions (they have an xattr marker). Only NEW screenshots use the new value. To re-resize all: `find ~/Pictures/Screenshots -name '*.png' -exec xattr -d com.screenshot-optimizer.resized {} \;`
 
 ## Why the name / who built this
 
