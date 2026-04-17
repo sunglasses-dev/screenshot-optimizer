@@ -43,8 +43,17 @@ echo ""
 echo "Recommended: move screenshots to $RECOMMENDED"
 echo "Your Cmd+Shift+5 / Cmd+Shift+4 shortcuts keep working — only the save path changes."
 echo ""
-read -p "Move screenshot save location to $RECOMMENDED? [Y/n] " -n 1 -r
-echo ""
+REPLY=""
+if [[ -t 0 ]]; then
+  read -p "Move screenshot save location to $RECOMMENDED? [Y/n] " -n 1 -r
+  echo ""
+elif [[ -r /dev/tty ]]; then
+  read -p "Move screenshot save location to $RECOMMENDED? [Y/n] " -n 1 -r < /dev/tty
+  echo ""
+else
+  echo "  (non-interactive install — defaulting to YES, move to $RECOMMENDED)"
+  REPLY="y"
+fi
 
 WATCH_DIR="$CURRENT_LOC"
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
